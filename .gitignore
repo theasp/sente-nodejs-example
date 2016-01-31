@@ -11,3 +11,4 @@
 pom.xml*
 .env
 /resources/public/*.js
+/node_modules

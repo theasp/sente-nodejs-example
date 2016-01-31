@@ -3,98 +3,61 @@
   {:author "Peter Taoussanis (@ptaoussanis)"}
 
   (:require
+   [cljs.nodejs        :as nodejs]
    [clojure.string     :as str]
-   [ring.middleware.defaults]
-   [compojure.core     :as comp :refer (defroutes GET POST)]
-   [compojure.route    :as route]
-   [hiccup.core        :as hiccup]
-   [clojure.core.async :as async  :refer (<! <!! >! >!! put! chan go go-loop)]
+   [hiccups.runtime    :as hiccupsrt]
+   [cljs.core.async    :as async  :refer (<! >! put! chan)]
    [taoensso.encore    :as encore :refer ()]
-   [taoensso.timbre    :as timbre :refer (tracef debugf infof warnf errorf)]
+   [taoensso.timbre    :as timbre :refer-macros (tracef debugf infof warnf errorf)]
    [taoensso.sente     :as sente]
 
    ;;; TODO: choose (uncomment) a supported web server and adapter
-   [org.httpkit.server :as http-kit]
-   [taoensso.sente.server-adapters.http-kit :refer (sente-web-server-adapter)]
-   ;;
-   ;; [immutant.web :as immutant]
-   ;; [taoensso.sente.server-adapters.immutant :refer (sente-web-server-adapter)]
-   ;;
-   ;; [nginx.clojure.embed :as nginx-clojure]
-   ;; [taoensso.sente.server-adapters.nginx-clojure :refer (sente-web-server-adapter)]
+   ;;; You will also have to comment/uncomment the appropriate section below.
+   ;; Dogfort
+   ;; [dogfort.middleware.defaults :as defaults]
+   ;; [dogfort.middleware.routes]
+   ;; [taoensso.sente.server-adapters.dogfort :refer (dogfort-adapter)]
+   ;; [dogfort.http :refer (run-http)]
+
+   ;; Express
+   [taoensso.sente.server-adapters.express :as sente-express]
 
    ;; Optional, for Transit encoding:
-   [taoensso.sente.packers.transit :as sente-transit]))
+   [taoensso.sente.packers.transit :as sente-transit])
+  (:require-macros
+   [dogfort.middleware.routes-macros :refer (defroutes GET POST)]
+   [hiccups.core :as hiccups :refer [html]]
+   [cljs.core.async.macros :as asyncm :refer (go go-loop)]))
 
-;; (timbre/set-level! :trace) ; Uncomment for more logging
-
-;;;; TODO: choose (uncomment) the relevant server fn
-
-(defn start-selected-web-server! [ring-handler port]
-  (infof "Starting http-kit...")
-  (let [stop-fn (http-kit/run-server ring-handler {:port port})]
-    {:server  nil ; http-kit doesn't expose this
-     :port    (:local-port (meta stop-fn))
-     :stop-fn (fn [] (stop-fn :timeout 100))}))
-
-;; (defn start-selected-web-server! [ring-handler port]
-;;   (infof "Starting Immutant...")
-;;   (let [server (immutant/run ring-handler :port port)]
-;;     {:server  server
-;;      :port    (:port server)
-;;      :stop-fn (fn [] (immutant/stop server))}))
-
-;; (defn start-selected-web-server! [ring-handler port]
-;;   (infof "Starting nginx-clojure...")
-;;   (let [port (nginx-clojure/run-server ring-handler {:port port})]
-;;     {:server  nil ; nginx-clojure doesn't expose this
-;;      :port    port
-;;      :stop-fn nginx-clojure/stop-server}))
-
-;;;; Define our Sente channel socket (chsk) server
-
-(let [;; Serializtion format, must use same val for client + server:
-      packer :edn ; Default packer, a good choice in most cases
-      ;; (sente-transit/get-flexi-packer :edn) ; Experimental, needs Transit dep
-
-      {:keys [ch-recv send-fn ajax-post-fn ajax-get-or-ws-handshake-fn
-              connected-uids]}
-      (sente/make-channel-socket-server! sente-web-server-adapter
-        {:packer packer})]
-
-  (def ring-ajax-post                ajax-post-fn)
-  (def ring-ajax-get-or-ws-handshake ajax-get-or-ws-handshake-fn)
-  (def ch-chsk                       ch-recv) ; ChannelSocket's receive channel
-  (def chsk-send!                    send-fn) ; ChannelSocket's send API fn
-  (def connected-uids                connected-uids) ; Watchable, read-only atom
-  )
+(enable-console-print!)
+;;(timbre/set-level! :trace) ; Uncomment for more logging
 
 ;;;; Ring handlers
 
 (defn landing-pg-handler [ring-req]
-  (hiccup/html
-    [:h1 "Sente reference example"]
-    [:p "An Ajax/WebSocket" [:strong " (random choice!)"] " has been configured for this example"]
-    [:hr]
-    [:p [:strong "Step 1: "] " try hitting the buttons:"]
-    [:button#btn1 {:type "button"} "chsk-send! (w/o reply)"]
-    [:button#btn2 {:type "button"} "chsk-send! (with reply)"]
-    ;;
-    [:p [:strong "Step 2: "] " observe std-out (for server output) and below (for client output):"]
-    [:textarea#output {:style "width: 100%; height: 200px;"}]
-    ;;
-    [:hr]
-    [:h2 "Step 3: try login with a user-id"]
-    [:p  "The server can use this id to send events to *you* specifically."]
-    [:p
-     [:input#input-login {:type :text :placeholder "User-id"}]
-     [:button#btn-login {:type "button"} "Secure login!"]]
-    ;;
-    [:hr]
-    [:h2 "Step 4: want to re-randomize Ajax/WebSocket connection type?"]
-    [:p "Hit your browser's reload/refresh button"]
-    [:script {:src "main.js"}] ; Include our cljs target
-    ))
+  (hiccups/html
+   [:h1 "Sente reference example"]
+   [:p "An Ajax/WebSocket" [:strong " (random choice!)"] " has been configured for this example"]
+   [:hr]
+   [:p [:strong "Step 1: "] " try hitting the buttons:"]
+   [:button#btn1 {:type "button"} "chsk-send! (w/o reply)"]
+   [:button#btn2 {:type "button"} "chsk-send! (with reply)"]
+   ;;
+   [:p [:strong "Step 2: "] " observe std-out (for server output) and below (for client output):"]
+   [:textarea#output {:style "width: 100%; height: 200px;"}]
+   ;;
+   [:hr]
+   [:h2 "Step 3: try login with a user-id"]
+   [:p  "The server can use this id to send events to *you* specifically."]
+   [:p
+    [:input#input-login {:type :text :placeholder "User-id"}]
+    [:button#btn-login {:type "button"} "Secure login!"]]
+   ;;
+   [:hr]
+   [:h2 "Step 4: want to re-randomize Ajax/WebSocket connection type?"]
+   [:p "Hit your browser's reload/refresh button"]
+   [:script {:src "main.js"}] ; Include our cljs target
+   ))
 
 (defn login-handler
   "Here's where you'll add your server-side login/auth procedure (Friend, etc.).
@@ -106,26 +69,169 @@
     (debugf "Login request: %s" params)
     {:status 200 :session (assoc session :uid user-id)}))
 
-(defroutes ring-routes
-  (GET  "/"      ring-req (landing-pg-handler            ring-req))
-  (GET  "/chsk"  ring-req (ring-ajax-get-or-ws-handshake ring-req))
-  (POST "/chsk"  ring-req (ring-ajax-post                ring-req))
-  (POST "/login" ring-req (login-handler                 ring-req))
-  (route/resources "/") ; Static files, notably public/main.js (our cljs target)
-  (route/not-found "<h1>Page not found</h1>"))
 
-(def main-ring-handler
-  (let [ring-defaults-config
-        (assoc-in ring.middleware.defaults/site-defaults
-          [:security :anti-forgery]
-          {:read-token (fn [req] (-> req :params :csrf-token))})]
+;; *************************************************************************
+;; vvvv  UNCOMMENT FROM HERE FOR DOGFORT                                vvvv
 
-    ;; NB: Sente requires the Ring `wrap-params` + `wrap-keyword-params`
-    ;; middleware to work. These are included with
-    ;; `ring.middleware.defaults/wrap-defaults` - but you'll need to ensure
-    ;; that they're included yourself if you're not using `wrap-defaults`.
-    (ring.middleware.defaults/wrap-defaults
-      ring-routes ring-defaults-config)))
+;; (let [;; Serializtion format, must use same val for client + server:
+;;       packer :edn ; Default packer, a good choice in most cases
+;;       ;; (sente-transit/get-flexi-packer :edn) ; Experimental, needs Transit dep
+
+;;       {:keys [ch-recv send-fn ajax-post-fn ajax-get-or-ws-handshake-fn
+;;               connected-uids]}
+;;       (sente/make-channel-socket-server! dogfort-adapter
+;;                                          {:packer packer})]
+
+;;   (def ring-ajax-post                ajax-post-fn)
+;;   (def ring-ajax-get-or-ws-handshake ajax-get-or-ws-handshake-fn)
+;;   (def ch-chsk                       ch-recv) ; ChannelSocket's receive channel
+;;   (def chsk-send!                    send-fn) ; ChannelSocket's send API fn
+;;   (def connected-uids                connected-uids) ; Watchable, read-only atom
+;;   )
+
+;; (defn login!
+;;   "Here's where you'll add your server-side login/auth procedure (Friend, etc.).
+;;   In our simplified example we'll just always successfully authenticate the user
+;;   with whatever user-id they provided in the auth request."
+;;   [req res]
+;;   (let [req-session (aget req "session")
+;;         params (aget req "params")
+;;         user-id (aget params "user-id")]
+;;     (debugf "Login request: %s" params)
+;;     (aset req-session "uid" user-id)
+;;     (.send res "Success")))
+
+
+;; (defroutes ring-routes
+;;   (GET  "/"      ring-req (landing-pg-handler            ring-req))
+;;   (GET  "/chsk"  ring-req (ring-ajax-get-or-ws-handshake ring-req))
+;;   (POST "/chsk"  ring-req (ring-ajax-post                ring-req))
+;;   (POST "/login" ring-req (login-handler                 ring-req)))
+
+;; (def main-ring-handler
+;;   (defaults/wrap-defaults ring-routes {:wrap-file "resources/public"}))
+
+;; (defn start-selected-web-server! [ring-handler port]
+;;   (println "Starting dogfort...")
+;;   (run-http ring-handler {:port port})
+;;   {:stop-fn #(errorf "One does not simply stop dogfort...")
+;;    :port port})
+
+;; ^^^^  UNCOMMENT TO HERE FOR DOGFORT                                  ^^^^
+;; *************************************************************************
+
+
+;; *************************************************************************
+;; vvvv  UNCOMMENT FROM HERE FOR EXPRESS                                vvvv
+
+(def http (nodejs/require "http"))
+(def express (nodejs/require "express"))
+(def express-ws (nodejs/require "express-ws"))
+(def ws (nodejs/require "ws"))
+(def cookie-parser (nodejs/require "cookie-parser"))
+(def body-parser (nodejs/require "body-parser"))
+(def csurf (nodejs/require "csurf"))
+(def session (nodejs/require "express-session"))
+
+(let [;; Serializtion format, must use same val for client + server:
+      packer :edn ; Default packer, a good choice in most cases
+      ;; (sente-transit/get-flexi-packer :edn) ; Experimental, needs Transit dep
+      {:keys [ch-recv send-fn ajax-post-fn ajax-get-or-ws-handshake-fn
+              connected-uids]}
+      (sente-express/make-express-adapter {:packer packer})]
+  (def ajax-post                ajax-post-fn)
+  (def ajax-get-or-ws-handshake ajax-get-or-ws-handshake-fn)
+  (def ch-chsk                  ch-recv) ; ChannelSocket's receive channel
+  (def chsk-send!               send-fn) ; ChannelSocket's send API fn
+  (def connected-uids           connected-uids) ; Watchable, read-only atom
+  )
+
+(defn get-csrf-token
+  "Sente uses 'csrf-token' in it's request but csurf usually uses
+  '_csrf'.  This extends what csurf looks for."
+  [req]
+  (let [body (.-body req)
+        query (.-query req)
+        headers (.-headers req)]
+    ;; It would be nice to be able to tell sente to use a different
+    ;; name...
+    (or
+     (aget body "_csrf") (aget body "csrf-token")
+     (aget query "_csrf") (aget query "csrf-token")
+     (aget headers "csrf-token") (aget headers "xsrf-token")
+     (aget headers "x-csrf-token") (aget headers "x-xsrf-token"))))
+
+(defn express-login-handler
+  "Here's where you'll add your server-side login/auth procedure (Friend, etc.).
+  In our simplified example we'll just always successfully authenticate the user
+  with whatever user-id they provided in the auth request."
+  [req res]
+  (let [req-session (aget req "session")
+        body (aget req "body")
+        user-id (aget body "user-id")]
+    (debugf "Login request: %s" user-id)
+    (aset req-session "uid" user-id)
+    (.send res "Success")))
+
+(defn routes [express-app]
+  (doto express-app
+    (.get "/" (fn [req res] (.send res (landing-pg-handler req))))
+
+    (.ws "/chsk"
+         (fn [ws req next]
+           (ajax-get-or-ws-handshake req nil nil
+                                     {:websocket? true
+                                      :websocket ws})))
+
+    (.get "/chsk" ajax-get-or-ws-handshake)
+    (.post "/chsk" ajax-post)
+    (.post "/login" express-login-handler)
+    (.use (.static express "resources/public"))
+    (.use (fn [req res next]
+            (warnf "Unhandled request: %s" (.-originalUrl req))
+            (next)))))
+
+(defn wrap-defaults [express-app routes]
+  (let [cookie-secret "the shiz"]
+    (doto express-app
+      (.use (fn [req res next]
+              (tracef "Request: %s" (.-originalUrl req))
+              (next)))
+      (.use (session
+             #js {:secret cookie-secret
+                  :resave true
+                  :cookie {}
+                  :store (.MemoryStore session)
+                  :saveUninitialized true}))
+      (.use (.urlencoded body-parser
+                         #js {:extended false}))
+      (.use (cookie-parser cookie-secret))
+      (.use (csurf
+             #js {:cookie false
+                  :value get-csrf-token}))
+      (routes))))
+
+(defn main-ring-handler [express-app]
+  ;; Can we even call this a ring handler?
+  (wrap-defaults express-app routes))
+
+(defn start-selected-web-server! [ring-handler port]
+  (println "Starting express...")
+  (let [express-app (express)
+        express-ws-server (express-ws express-app)]
+
+    (ring-handler express-app)
+
+    (let [http-server (.listen express-app port)]
+      {:express-app express-app
+       :ws-server express-ws-server
+       :http-server http-server
+       :stop-fn #(.close http-server)
+       :port port})))
+
+;; ^^^^  UNCOMMENT TO HERE FOR EXPRESS                                  ^^^^
+;; *************************************************************************
+
 
 ;;;; Sente event handlers
 
@@ -157,8 +263,8 @@
 (defn start-router! []
   (stop-router!)
   (reset! router_
-    (sente/start-server-chsk-router!
-      ch-chsk event-msg-handler)))
+          (sente/start-server-chsk-router!
+           ch-chsk event-msg-handler)))
 
 ;;;; Some server>user async push examples
 
@@ -171,11 +277,11 @@
           (debugf "Broadcasting server>user: %s" @connected-uids)
           (doseq [uid (:any @connected-uids)]
             (chsk-send! uid
-              [:some/broadcast
-               {:what-is-this "An async broadcast pushed from server"
-                :how-often "Every 10 seconds"
-                :to-whom uid
-                :i i}])))]
+                        [:some/broadcast
+                         {:what-is-this "An async broadcast pushed from server"
+                          :how-often "Every 10 seconds"
+                          :to-whom uid
+                          :i i}])))]
 
     (go-loop [i 0]
       (<! (async/timeout 10000))
@@ -199,21 +305,19 @@
 (defn start-web-server! [& [port]]
   (stop-web-server!)
   (let [{:keys [stop-fn port] :as server-map}
-        (start-selected-web-server! (var main-ring-handler)
-          (or port 0) ; 0 => auto (any available) port
-          )
-        uri (format "http://localhost:%s/" port)]
+        (start-selected-web-server! (var main-ring-handler) (or port 4000))
+        uri (str "http://localhost:" port "/")]
     (infof "Web server is running at `%s`" uri)
-    (try
-      (.browse (java.awt.Desktop/getDesktop) (java.net.URI. uri))
-      (catch java.awt.HeadlessException _))
     (reset! web-server_ server-map)))
 
 (defn stop!  []  (stop-router!)  (stop-web-server!))
 (defn start! [] (start-router!) (start-web-server!) (start-example-broadcaster!))
 ;; (defonce _start-once (start!))
 
-(defn -main "For `lein run`, etc." [] (start!))
+(defn -main [& _]
+  (start!))
+
+(set! *main-cli-fn* -main) ;; this is required
 
 (comment
   (start!)
