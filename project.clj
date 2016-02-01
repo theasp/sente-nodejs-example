@@ -17,7 +17,7 @@
    [org.clojure/core.async    "0.2.374"]
    [org.clojure/tools.nrepl   "0.2.12"] ; Optional, for Cider
 
-   [com.taoensso/sente        "1.8.0-alpha1"] ; <--- Sente
+   [com.taoensso/sente        "1.8.0-beta1"] ; <--- Sente
    [com.taoensso/timbre       "4.2.1"]
 
    ;;; ---> Choose (uncomment) a supported web server <---
