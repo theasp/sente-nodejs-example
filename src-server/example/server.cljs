@@ -65,7 +65,7 @@
   with whatever user-id they provided in the auth request."
   [ring-req]
   (let [{:keys [session params]} ring-req
-        {:keys [user-id]} params]
+        {:keys [user-id]}        params]
     (debugf "Login request: %s" params)
     {:status 200 :session (assoc session :uid user-id)}))
 
@@ -150,8 +150,8 @@
   "Sente uses 'csrf-token' in it's request but csurf usually uses
   '_csrf'.  This extends what csurf looks for."
   [req]
-  (let [body (.-body req)
-        query (.-query req)
+  (let [body    (.-body req)
+        query   (.-query req)
         headers (.-headers req)]
     ;; It would be nice to be able to tell sente to use a different
     ;; name...
@@ -167,8 +167,8 @@
   with whatever user-id they provided in the auth request."
   [req res]
   (let [req-session (aget req "session")
-        body (aget req "body")
-        user-id (aget body "user-id")]
+        body        (aget req "body")
+        user-id     (aget body "user-id")]
     (debugf "Login request: %s" user-id)
     (aset req-session "uid" user-id)
     (.send res "Success")))
@@ -181,7 +181,7 @@
          (fn [ws req next]
            (ajax-get-or-ws-handshake req nil nil
                                      {:websocket? true
-                                      :websocket ws})))
+                                      :websocket  ws})))
 
     (.get "/chsk" ajax-get-or-ws-handshake)
     (.post "/chsk" ajax-post)
@@ -198,17 +198,17 @@
               (tracef "Request: %s" (.-originalUrl req))
               (next)))
       (.use (session
-             #js {:secret cookie-secret
-                  :resave true
-                  :cookie {}
-                  :store (.MemoryStore session)
+             #js {:secret            cookie-secret
+                  :resave            true
+                  :cookie            {}
+                  :store             (.MemoryStore session)
                   :saveUninitialized true}))
       (.use (.urlencoded body-parser
                          #js {:extended false}))
       (.use (cookie-parser cookie-secret))
       (.use (csurf
              #js {:cookie false
-                  :value get-csrf-token}))
+                  :value  get-csrf-token}))
       (routes))))
 
 (defn main-ring-handler [express-app]
@@ -217,17 +217,17 @@
 
 (defn start-selected-web-server! [ring-handler port]
   (println "Starting express...")
-  (let [express-app (express)
+  (let [express-app       (express)
         express-ws-server (express-ws express-app)]
 
     (ring-handler express-app)
 
     (let [http-server (.listen express-app port)]
       {:express-app express-app
-       :ws-server express-ws-server
+       :ws-server   express-ws-server
        :http-server http-server
-       :stop-fn #(.close http-server)
-       :port port})))
+       :stop-fn     #(.close http-server)
+       :port        port})))
 
 ;; ^^^^  UNCOMMENT TO HERE FOR EXPRESS                                  ^^^^
 ;; *************************************************************************
@@ -279,9 +279,9 @@
             (chsk-send! uid
                         [:some/broadcast
                          {:what-is-this "An async broadcast pushed from server"
-                          :how-often "Every 10 seconds"
-                          :to-whom uid
-                          :i i}])))]
+                          :how-often    "Every 10 seconds"
+                          :to-whom      uid
+                          :i            i}])))]
 
     (go-loop [i 0]
       (<! (async/timeout 10000))
