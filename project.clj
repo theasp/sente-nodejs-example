@@ -1,13 +1,13 @@
 (defproject com.taoensso.examples/sente "1.8.0-beta1"
   :description "Sente, node.js web-app example project"
   :url "https://github.com/ptaoussanis/sente"
-  :license {:name "Eclipse Public License"
-            :url  "http://www.eclipse.org/legal/epl-v10.html"
+  :license {:name         "Eclipse Public License"
+            :url          "http://www.eclipse.org/legal/epl-v10.html"
             :distribution :repo
-            :comments "Same as Clojure"}
+            :comments     "Same as Clojure"}
   :min-lein-version "2.3.3"
   :global-vars {*warn-on-reflection* true
-                *assert* true}
+                *assert*             true}
 
   :dependencies
   [;; [org.clojure/clojure    "1.7.0"]
@@ -17,7 +17,7 @@
    [org.clojure/core.async    "0.2.374"]
    [org.clojure/tools.nrepl   "0.2.12"] ; Optional, for Cider
 
-   [com.taoensso/sente        "1.8.0-beta1"] ; <--- Sente
+   [com.taoensso/sente        "1.8.0"] ; <--- Sente
    [com.taoensso/timbre       "4.2.1"]
 
    ;;; ---> Choose (uncomment) a supported web server <---
@@ -56,27 +56,27 @@
 
   :cljsbuild
   {:builds
-   [{:id :cljs-server
+   [{:id           :cljs-server
      :source-paths ["src-server"]
-     :compiler {:main "example.server"
-                :output-to "target/main.js"
-                :output-dir "target/out"
-                :target :nodejs
-                ;;:optimizations :simple
-                ;;:source-map "target/main.js.map"
-                :optimizations :none
-                :source-map true
-                :pretty-print true}}
-    {:id :cljs-client
+     :compiler     {:main          "example.server"
+                    :output-to     "target/main.js"
+                    :output-dir    "target/out"
+                    :target        :nodejs
+                    ;;:optimizations :simple
+                    ;;:source-map "target/main.js.map"
+                    :optimizations :none
+                    :source-map    true
+                    :pretty-print  true}}
+    {:id           :cljs-client
      :source-paths ["src-client"]
-     :compiler {:output-to "resources/public/main.js"
-                :optimizations :whitespace #_:advanced
-                :pretty-print true}}]}
+     :compiler     {:output-to     "resources/public/main.js"
+                    :optimizations :whitespace #_:advanced
+                    :pretty-print  true}}]}
 
   ;; Call `lein start-repl` to get a (headless) development repl that you can
   ;; connect to with Cider+emacs or your IDE of choice:
   :aliases
-  {"start"      ["do" "npm" "install," "cljsbuild" "once," "shell" "node" "target/main.js"]}
+  {"start" ["do" "npm" "install," "cljsbuild" "once," "shell" "node" "target/main.js"]}
 
   :repositories
   {"sonatype-oss-public" "https://oss.sonatype.org/content/groups/public/"})
