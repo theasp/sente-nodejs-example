@@ -146,21 +146,6 @@
   (def connected-uids           connected-uids) ; Watchable, read-only atom
   )
 
-(defn get-csrf-token
-  "Sente uses 'csrf-token' in it's request but csurf usually uses
-  '_csrf'.  This extends what csurf looks for."
-  [req]
-  (let [body    (.-body req)
-        query   (.-query req)
-        headers (.-headers req)]
-    ;; It would be nice to be able to tell sente to use a different
-    ;; name...
-    (or
-     (aget body "_csrf") (aget body "csrf-token")
-     (aget query "_csrf") (aget query "csrf-token")
-     (aget headers "csrf-token") (aget headers "xsrf-token")
-     (aget headers "x-csrf-token") (aget headers "x-xsrf-token"))))
-
 (defn express-login-handler
   "Here's where you'll add your server-side login/auth procedure (Friend, etc.).
   In our simplified example we'll just always successfully authenticate the user
@@ -207,8 +192,7 @@
                          #js {:extended false}))
       (.use (cookie-parser cookie-secret))
       (.use (csurf
-             #js {:cookie false
-                  :value  get-csrf-token}))
+             #js {:cookie false}))
       (routes))))
 
 (defn main-ring-handler [express-app]
