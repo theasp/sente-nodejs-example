@@ -32,17 +32,17 @@
 
 (let [;; For this example, select a random protocol:
       rand-chsk-type (if (>= (rand) 0.5) :ajax :auto)
-      _ (->output! "Randomly selected chsk type: %s" rand-chsk-type)
+      _              (->output! "Randomly selected chsk type: %s" rand-chsk-type)
 
       ;; Serializtion format, must use same val for client + server:
-      packer :edn ; Default packer, a good choice in most cases
+      packer         :edn ; Default packer, a good choice in most cases
       ;; (sente-transit/get-flexi-packer :edn) ; Experimental, needs Transit dep
 
       {:keys [chsk ch-recv send-fn state]}
       (sente/make-channel-socket-client!
-        "/chsk" ; Must match server Ring routing URL
-        {:type   rand-chsk-type
-         :packer packer})]
+       "/chsk" ; Must match server Ring routing URL
+       {:type   rand-chsk-type
+        :packer packer})]
 
   (def chsk       chsk)
   (def ch-chsk    ch-recv) ; ChannelSocket's receive channel
@@ -91,51 +91,52 @@
 (defn start-router! []
   (stop-router!)
   (reset! router_
-    (sente/start-client-chsk-router!
-      ch-chsk event-msg-handler)))
+          (sente/start-client-chsk-router!
+           ch-chsk event-msg-handler)))
 
 ;;;; UI events
 
 (when-let [target-el (.getElementById js/document "btn1")]
   (.addEventListener target-el "click"
-    (fn [ev]
-      (->output! "Button 1 was clicked (won't receive any reply from server)")
-      (chsk-send! [:example/button1 {:had-a-callback? "nope"}]))))
+                     (fn [ev]
+                       (->output! "Button 1 was clicked (won't receive any reply from server)")
+                       (chsk-send! [:example/button1 {:had-a-callback? "nope"}]))))
 
 (when-let [target-el (.getElementById js/document "btn2")]
   (.addEventListener target-el "click"
-    (fn [ev]
-      (->output! "Button 2 was clicked (will receive reply from server)")
-      (chsk-send! [:example/button2 {:had-a-callback? "indeed"}] 5000
-        (fn [cb-reply] (->output! "Callback reply: %s" cb-reply))))))
+                     (fn [ev]
+                       (->output! "Button 2 was clicked (will receive reply from server)")
+                       (chsk-send! [:example/button2 {:had-a-callback? "indeed"}] 5000
+                                   (fn [cb-reply] (->output! "Callback reply: %s" cb-reply))))))
 
-(when-let [target-el (.getElementById js/document "btn-login")]
-  (.addEventListener target-el "click"
-    (fn [ev]
-      (let [user-id (.-value (.getElementById js/document "input-login"))]
-        (if (str/blank? user-id)
-          (js/alert "Please enter a user-id first")
-          (do
-            (->output! "Logging in with user-id %s" user-id)
+(defn btn-login-click [ev]
+  (let [user-id (.-value (.getElementById js/document "input-login"))]
+    (if (str/blank? user-id)
+      (js/alert "Please enter a user-id first")
+      (do
+        (->output! "Logging in with user-id %s" user-id)
 
             ;;; Use any login procedure you'd like. Here we'll trigger an Ajax
             ;;; POST request that resets our server-side session. Then we ask
             ;;; our channel socket to reconnect, thereby picking up the new
             ;;; session.
 
-            (sente/ajax-lite "/login"
-              {:method :post
-               :params {:user-id    (str user-id)
-                        :csrf-token (:csrf-token @chsk-state)}}
-              (fn [ajax-resp]
-                (->output! "Ajax login response: %s" ajax-resp)
-                (let [login-successful? true ; Your logic here
-                      ]
-                  (if-not login-successful?
-                    (->output! "Login failed")
-                    (do
-                      (->output! "Login successful")
-                      (sente/chsk-reconnect! chsk))))))))))))
+        (sente/ajax-lite "/login"
+                         {:method :post
+                          :params {:user-id    (str user-id)
+                                   :csrf-token (:csrf-token @chsk-state)}}
+                         (fn [ajax-resp]
+                           (->output! "Ajax login response: %s" ajax-resp)
+                           (let [login-successful? true ; Your logic here
+                                 ]
+                             (if-not login-successful?
+                               (->output! "Login failed")
+                               (do
+                                 (->output! "Login successful")
+                                 (sente/chsk-reconnect! chsk))))))))))
+
+(when-let [target-el (.getElementById js/document "btn-login")]
+  (.addEventListener target-el "click" btn-login-click))
 
 ;;;; Init stuff
 
