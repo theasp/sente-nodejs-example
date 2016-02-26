@@ -123,8 +123,8 @@
 
         (sente/ajax-lite "/login"
                          {:method :post
-                          :params {:user-id    (str user-id)
-                                   :csrf-token (:csrf-token @chsk-state)}}
+                          :headers {:x-csrf-token (:csrf-token @chsk-state)}
+                          :params {:user-id    (str user-id)}}
                          (fn [ajax-resp]
                            (->output! "Ajax login response: %s" ajax-resp)
                            (let [login-successful? true ; Your logic here
