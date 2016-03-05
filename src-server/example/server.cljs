@@ -138,7 +138,8 @@
       ;; (sente-transit/get-flexi-packer :edn) ; Experimental, needs Transit dep
       {:keys [ch-recv send-fn ajax-post-fn ajax-get-or-ws-handshake-fn
               connected-uids]}
-      (sente-express/make-express-channel-socket-server! {:packer packer})]
+      (sente-express/make-express-channel-socket-server! {:packer packer
+                                                          :user-id-fn (fn [ring-req] (aget (:body ring-req) "session" "uid"))})]
   (def ajax-post                ajax-post-fn)
   (def ajax-get-or-ws-handshake ajax-get-or-ws-handshake-fn)
   (def ch-chsk                  ch-recv) ; ChannelSocket's receive channel
