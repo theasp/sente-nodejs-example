@@ -13,11 +13,11 @@
   [;; [org.clojure/clojure    "1.7.0"]
    [org.clojure/clojure       "1.8.0"]
 
-   [org.clojure/clojurescript "1.7.228"]
+   [org.clojure/clojurescript "1.9.36"]
    [org.clojure/core.async    "0.2.374"]
    [org.clojure/tools.nrepl   "0.2.12"] ; Optional, for Cider
 
-   [com.taoensso/sente        "1.9.0-beta1"] ; <--- Sente
+   [com.taoensso/sente        "1.9.0-SNAPSHOT"] ; <--- Sente
    [com.taoensso/timbre       "4.4.0"]
 
    ;;; ---> Choose (uncomment) a supported web server <---
@@ -46,12 +46,12 @@
 
   :plugins
   [[lein-pprint         "1.1.2"]
-   [lein-ancient        "0.6.8"]
+   [lein-ancient        "0.6.10"]
    [com.cemerick/austin "0.1.6"]
-   [lein-cljsbuild      "1.1.2"]
+   [lein-cljsbuild      "1.1.3"]
    [lein-shell          "0.5.0"]
-   [lein-npm            "0.6.1"]
-   [cider/cider-nrepl   "0.10.1"] ; Optional, for use with Emacs
+   [lein-npm            "0.6.2"]
+   [cider/cider-nrepl   "0.12.0"] ; Optional, for use with Emacs
    ]
 
   :cljsbuild
@@ -76,7 +76,7 @@
   ;; Call `lein start-repl` to get a (headless) development repl that you can
   ;; connect to with Cider+emacs or your IDE of choice:
   :aliases
-  {"start" ["do" "npm" "install," "cljsbuild" "once," "shell" "node" "target/main.js"]}
+  {"start" ["do" "clean," "npm" "install," "cljsbuild" "once," "shell" "node" "target/main.js"]}
 
   :repositories
   {"sonatype-oss-public" "https://oss.sonatype.org/content/groups/public/"})
