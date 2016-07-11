@@ -10,15 +10,14 @@
                 *assert*             true}
 
   :dependencies
-  [;; [org.clojure/clojure    "1.7.0"]
-   [org.clojure/clojure       "1.8.0"]
+  [[org.clojure/clojure       "1.8.0"]
 
-   [org.clojure/clojurescript "1.9.36"]
-   [org.clojure/core.async    "0.2.374"]
+   [org.clojure/clojurescript "1.9.93"]
+   [org.clojure/core.async    "0.2.385"]
    [org.clojure/tools.nrepl   "0.2.12"] ; Optional, for Cider
 
-   [com.taoensso/sente        "1.9.0-SNAPSHOT"] ; <--- Sente
-   [com.taoensso/timbre       "4.4.0"]
+   [com.taoensso/sente        "1.9.0"] ; <--- Sente
+   [com.taoensso/timbre       "4.5.1"]
 
    ;;; ---> Choose (uncomment) a supported web server <---
    [org.clojars.whamtet/dogfort "0.2.0-SNAPSHOT"]
@@ -27,7 +26,7 @@
 
    ;;; Transit deps optional; may be used to aid perf. of larger data payloads
    ;;; (see reference example for details):
-   [com.cognitect/transit-cljs "0.8.237"]]
+   [com.cognitect/transit-cljs "0.8.239"]]
 
   :npm
   {:dependencies
