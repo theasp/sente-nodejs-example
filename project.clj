@@ -1,4 +1,4 @@
-(defproject com.taoensso.examples/sente "1.8.0-beta1"
+(defproject com.taoensso.examples/sente "1.10.0-SNAPSHOT"
   :description "Sente, node.js web-app example project"
   :url "https://github.com/ptaoussanis/sente"
   :license {:name         "Eclipse Public License"
@@ -16,8 +16,8 @@
    [org.clojure/core.async    "0.2.385"]
    [org.clojure/tools.nrepl   "0.2.12"] ; Optional, for Cider
 
-   [com.taoensso/sente        "1.9.0"] ; <--- Sente
-   [com.taoensso/timbre       "4.5.1"]
+   [com.taoensso/sente        "1.10.0-SNAPSHOT"] ; <--- Sente
+   [com.taoensso/timbre       "4.6.0"]
 
    ;;; ---> Choose (uncomment) a supported web server <---
    [org.clojars.whamtet/dogfort "0.2.0-SNAPSHOT"]
@@ -30,18 +30,21 @@
 
   :npm
   {:dependencies
-   [[source-map-support       "*"]
+   [[source-map-support "*"]
 
     ;; Express
-    [express                  "4.13.3"]
-    [express-ws               "1.0.0-rc.2"]
-    [body-parser              "1.14.1"]
-    [cookie-parser            "1.4.0"]
-    [express-session          "1.11.3"]
-    [csurf                    "1.8.3"]
+    [express            "4.13.3"]
+    [express-ws         "1.0.0-rc.2"]
+    [body-parser        "1.14.1"]
+    [cookie-parser      "1.4.0"]
+    [express-session    "1.11.3"]
+    [csurf              "1.8.3"]
 
     ;; ws is needed for dogfort and express
-    [ws                       "0.8.0"]]}
+    [ws                 "0.8.0"]
+
+    ;; websocket is needed for the node.js client
+    [websocket          "1.0.23"]]}
 
   :plugins
   [[lein-pprint         "1.1.2"]
@@ -57,7 +60,7 @@
   {:builds
    [{:id           :cljs-server
      :source-paths ["src-server"]
-     :compiler     {:main          "example.server"
+     :compiler     {:main          example.server
                     :output-to     "target/main.js"
                     :output-dir    "target/out"
                     :target        :nodejs
@@ -68,14 +71,27 @@
                     :pretty-print  true}}
     {:id           :cljs-client
      :source-paths ["src-client"]
-     :compiler     {:output-to     "resources/public/main.js"
+     :compiler     {:main          example.client
+                    :output-to     "resources/public/main.js"
                     :optimizations :whitespace #_:advanced
+                    :pretty-print  true}}
+    {:id           :node-client
+     :source-paths ["src-client"]
+     :compiler     {:main          example.node
+                    :output-to     "target/node-client.js"
+                    :output-dir    "target/node-out"
+                    :target        :nodejs
+                    ;;:optimizations simple
+                    ;;:source-map    "target/node.map.js"
+                    :optimizations :none
+                    :source-map    true
                     :pretty-print  true}}]}
 
   ;; Call `lein start-repl` to get a (headless) development repl that you can
   ;; connect to with Cider+emacs or your IDE of choice:
   :aliases
-  {"start" ["do" "clean," "npm" "install," "cljsbuild" "once," "shell" "node" "target/main.js"]}
+  {"start"        ["do" "clean," "npm" "install," "cljsbuild" "once," "shell" "node" "target/main.js"]
+   "start-client" ["do" "clean," "npm" "install," "cljsbuild" "once," "shell" "node" "target/node-client.js"]}
 
   :repositories
   {"sonatype-oss-public" "https://oss.sonatype.org/content/groups/public/"})
