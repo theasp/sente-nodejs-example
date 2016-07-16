@@ -1,5 +1,8 @@
 ;; Example node.js client from David Martin (https://github.com/DaveWM)
 
+;; NOTE: This requires the js websocket library available through npm.
+;; See project.clj.
+
 (ns example.node
   (:require
    [taoensso.sente :as sente]
