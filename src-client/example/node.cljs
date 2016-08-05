@@ -40,9 +40,10 @@
         {:keys [chsk ch-recv send-fn state]}
         (sente/make-channel-socket-client!
          "/chsk" ; Must match server Ring routing URL
-         {:type   :auto
-          :packer packer
-          :host   "localhost:4000"})]
+         {:type     :auto
+          :packer   packer
+          :protocol :http
+          :host     "localhost:4000"})]
 
     (def chsk       chsk)
     (def ch-chsk    ch-recv) ; ChannelSocket's receive channel
