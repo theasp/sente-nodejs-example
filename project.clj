@@ -12,12 +12,12 @@
   :dependencies
   [[org.clojure/clojure       "1.8.0"]
 
-   [org.clojure/clojurescript "1.9.93"]
-   [org.clojure/core.async    "0.2.385"]
-   [org.clojure/tools.nrepl   "0.2.12"] ; Optional, for Cider
+   [org.clojure/clojurescript "1.9.671"]
+   [org.clojure/core.async    "0.3.443"]
+   [org.clojure/tools.nrepl   "0.2.13"] ; Optional, for Cider
 
-   [com.taoensso/sente        "1.10.0"] ; <--- Sente
-   [com.taoensso/timbre       "4.6.0"]
+   [com.taoensso/timbre       "4.10.0"]
+   [com.taoensso/sente        "1.11.0"] ; <--- Sente
 
    ;;; ---> Choose (uncomment) a supported web server <---
    [org.clojars.whamtet/dogfort "0.2.0-SNAPSHOT"]
