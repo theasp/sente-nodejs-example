@@ -16,11 +16,18 @@
    ;; Dogfort
    ;; [dogfort.middleware.defaults :as defaults]
    ;; [dogfort.middleware.routes]
-   ;; [taoensso.sente.server-adapters.dogfort :refer (dogfort-adapter)]
+   [taoensso.sente.server-adapters.dogfort :refer (dogfort-adapter)]
    ;; [dogfort.http :refer (run-http)]
 
    ;; Express
    [taoensso.sente.server-adapters.express :as sente-express]
+
+   ;; Macchiato
+   [bidi.bidi :as bidi]
+   [macchiato.server :as m-http]
+   [macchiato.middleware.defaults :as m-defaults]
+   [macchiato.util.response :as m-resp]
+   [macchiato.middleware.resource :as m-resource]
 
    ;; Optional, for Transit encoding:
    [taoensso.sente.packers.transit :as sente-transit])
@@ -33,6 +40,14 @@
 ;;(timbre/set-level! :trace) ; Uncomment for more logging
 
 ;;;; Ring handlers
+
+(defn not-found [ring-req]
+  (-> (hiccups/html
+       [:html
+        [:body
+         [:h2 (:uri ring-req) " was not found"]]])
+      (m-resp/not-found)
+      (m-resp/content-type "text/html")))
 
 (defn landing-pg-handler [ring-req]
   (hiccups/html
@@ -68,6 +83,68 @@
         {:keys [user-id]}        params]
     (debugf "Login request: %s" params)
     {:status 200 :session (assoc session :uid user-id)}))
+
+;; *************************************************************************
+;; vvvv  UNCOMMENT FROM HERE FOR MACCHIATO                              vvvv
+
+(let [;; Serializtion format, must use same val for client + server:
+      packer :edn ; Default packer, a good choice in most cases
+      ;; (sente-transit/get-flexi-packer :edn) ; Experimental, needs Transit dep
+
+      {:keys [ch-recv send-fn ajax-post-fn ajax-get-or-ws-handshake-fn
+              connected-uids]}
+      (sente/make-channel-socket-server! dogfort-adapter
+                                         {:packer packer})]
+
+  (def ring-ajax-post                ajax-post-fn)
+  (def ring-ajax-get-or-ws-handshake ajax-get-or-ws-handshake-fn)
+  (def ch-chsk                       ch-recv) ; ChannelSocket's receive channel
+  (def chsk-send!                    send-fn) ; ChannelSocket's send API fn
+  (def connected-uids                connected-uids) ; Watchable, read-only atom
+  )
+
+(defn wrap-macchiato-sente [handler]
+  (fn [req res raise]
+    (-> req
+        (assoc :response (:node/response req))
+        (handler))))
+
+(defn wrap-macchiato-res [handler]
+  (fn [req res raise]
+    (res (handler req))))
+
+(defn routes []
+  ["/" {""      {:get (wrap-macchiato-res landing-pg-handler)}
+        "chsk"  {:get  (wrap-macchiato-sente ring-ajax-get-or-ws-handshake)
+                 :post (wrap-macchiato-sente ring-ajax-post)
+                 :ws   (wrap-macchiato-sente ring-ajax-get-or-ws-handshake)}
+        "login" {:get (wrap-macchiato-res login-handler)}}])
+
+
+
+(defn router [req res raise]
+  (if-let [{:keys [handler route-params]} (bidi/match-route* (routes) (:uri req) req)]
+    (handler (assoc req :route-params route-params) res raise)
+    (res (not-found req))))
+
+(def main-ring-handler
+  (-> router
+      (m-resource/wrap-resource "resources/public")
+      (m-defaults/wrap-defaults m-defaults/site-defaults)))
+
+(defn start-selected-web-server! [ring-handler port]
+  (infof "Starting Macchiato...")
+  (let [options {:handler    ring-handler
+                 :port       port
+                 :on-success #(infof "Macchiato started on port %s" port)}
+        stop-fn (m-http/start options)]
+    {:port    port
+     :stop-fn stop-fn}))
+
+
+;; ^^^^  UNCOMMENT TO HERE FOR MACCHIATO                                ^^^^
+;; *************************************************************************
+
 
 
 ;; *************************************************************************
@@ -112,7 +189,7 @@
 ;;   (defaults/wrap-defaults ring-routes {:wrap-file "resources/public"}))
 
 ;; (defn start-selected-web-server! [ring-handler port]
-;;   (println "Starting dogfort...")
+;;   (infof "Starting dogfort...")
 ;;   (run-http ring-handler {:port port})
 ;;   {:stop-fn #(errorf "One does not simply stop dogfort...")
 ;;    :port port})
@@ -124,95 +201,95 @@
 ;; *************************************************************************
 ;; vvvv  UNCOMMENT FROM HERE FOR EXPRESS                                vvvv
 
-(def http (nodejs/require "http"))
-(def express (nodejs/require "express"))
-(def express-ws (nodejs/require "express-ws"))
-(def ws (nodejs/require "ws"))
-(def cookie-parser (nodejs/require "cookie-parser"))
-(def body-parser (nodejs/require "body-parser"))
-(def csurf (nodejs/require "csurf"))
-(def session (nodejs/require "express-session"))
+;; (def http (nodejs/require "http"))
+;; (def express (nodejs/require "express"))
+;; (def express-ws (nodejs/require "express-ws"))
+;; (def ws (nodejs/require "ws"))
+;; (def cookie-parser (nodejs/require "cookie-parser"))
+;; (def body-parser (nodejs/require "body-parser"))
+;; (def csurf (nodejs/require "csurf"))
+;; (def session (nodejs/require "express-session"))
 
-(let [;; Serializtion format, must use same val for client + server:
-      packer :edn ; Default packer, a good choice in most cases
-      ;; (sente-transit/get-flexi-packer :edn) ; Experimental, needs Transit dep
-      {:keys [ch-recv send-fn ajax-post-fn ajax-get-or-ws-handshake-fn
-              connected-uids]}
-      (sente-express/make-express-channel-socket-server! {:packer packer
-                                                          :user-id-fn (fn [ring-req] (aget (:body ring-req) "session" "uid"))})]
-  (def ajax-post                ajax-post-fn)
-  (def ajax-get-or-ws-handshake ajax-get-or-ws-handshake-fn)
-  (def ch-chsk                  ch-recv) ; ChannelSocket's receive channel
-  (def chsk-send!               send-fn) ; ChannelSocket's send API fn
-  (def connected-uids           connected-uids) ; Watchable, read-only atom
-  )
+;; (let [;; Serializtion format, must use same val for client + server:
+;;       packer :edn ; Default packer, a good choice in most cases
+;;       ;; (sente-transit/get-flexi-packer :edn) ; Experimental, needs Transit dep
+;;       {:keys [ch-recv send-fn ajax-post-fn ajax-get-or-ws-handshake-fn
+;;               connected-uids]}
+;;       (sente-express/make-express-channel-socket-server! {:packer packer
+;;                                                           :user-id-fn (fn [ring-req] (aget (:body ring-req) "session" "uid"))})]
+;;   (def ajax-post                ajax-post-fn)
+;;   (def ajax-get-or-ws-handshake ajax-get-or-ws-handshake-fn)
+;;   (def ch-chsk                  ch-recv) ; ChannelSocket's receive channel
+;;   (def chsk-send!               send-fn) ; ChannelSocket's send API fn
+;;   (def connected-uids           connected-uids) ; Watchable, read-only atom
+;;   )
 
-(defn express-login-handler
-  "Here's where you'll add your server-side login/auth procedure (Friend, etc.).
-  In our simplified example we'll just always successfully authenticate the user
-  with whatever user-id they provided in the auth request."
-  [req res]
-  (let [req-session (aget req "session")
-        body        (aget req "body")
-        user-id     (aget body "user-id")]
-    (debugf "Login request: %s" user-id)
-    (aset req-session "uid" user-id)
-    (.send res "Success")))
+;; (defn express-login-handler
+;;   "Here's where you'll add your server-side login/auth procedure (Friend, etc.).
+;;   In our simplified example we'll just always successfully authenticate the user
+;;   with whatever user-id they provided in the auth request."
+;;   [req res]
+;;   (let [req-session (aget req "session")
+;;         body        (aget req "body")
+;;         user-id     (aget body "user-id")]
+;;     (debugf "Login request: %s" user-id)
+;;     (aset req-session "uid" user-id)
+;;     (.send res "Success")))
 
-(defn routes [express-app]
-  (doto express-app
-    (.get "/" (fn [req res] (.send res (landing-pg-handler req))))
+;; (defn routes [express-app]
+;;   (doto express-app
+;;     (.get "/" (fn [req res] (.send res (landing-pg-handler req))))
 
-    (.ws "/chsk"
-         (fn [ws req next]
-           (ajax-get-or-ws-handshake req nil nil
-                                     {:websocket? true
-                                      :websocket  ws})))
+;;     (.ws "/chsk"
+;;          (fn [ws req next]
+;;            (ajax-get-or-ws-handshake req nil nil
+;;                                      {:websocket? true
+;;                                       :websocket  ws})))
 
-    (.get "/chsk" ajax-get-or-ws-handshake)
-    (.post "/chsk" ajax-post)
-    (.post "/login" express-login-handler)
-    (.use (.static express "resources/public"))
-    (.use (fn [req res next]
-            (warnf "Unhandled request: %s" (.-originalUrl req))
-            (next)))))
+;;     (.get "/chsk" ajax-get-or-ws-handshake)
+;;     (.post "/chsk" ajax-post)
+;;     (.post "/login" express-login-handler)
+;;     (.use (.static express "resources/public"))
+;;     (.use (fn [req res next]
+;;             (warnf "Unhandled request: %s" (.-originalUrl req))
+;;             (next)))))
 
-(defn wrap-defaults [express-app routes]
-  (let [cookie-secret "the shiz"]
-    (doto express-app
-      (.use (fn [req res next]
-              (tracef "Request: %s" (.-originalUrl req))
-              (next)))
-      (.use (session
-             #js {:secret            cookie-secret
-                  :resave            true
-                  :cookie            {}
-                  :store             (.MemoryStore session)
-                  :saveUninitialized true}))
-      (.use (.urlencoded body-parser
-                         #js {:extended false}))
-      (.use (cookie-parser cookie-secret))
-      (.use (csurf
-             #js {:cookie false}))
-      (routes))))
+;; (defn wrap-defaults [express-app routes]
+;;   (let [cookie-secret "the shiz"]
+;;     (doto express-app
+;;       (.use (fn [req res next]
+;;               (tracef "Request: %s" (.-originalUrl req))
+;;               (next)))
+;;       (.use (session
+;;              #js {:secret            cookie-secret
+;;                   :resave            true
+;;                   :cookie            {}
+;;                   :store             (.MemoryStore session)
+;;                   :saveUninitialized true}))
+;;       (.use (.urlencoded body-parser
+;;                          #js {:extended false}))
+;;       (.use (cookie-parser cookie-secret))
+;;       (.use (csurf
+;;              #js {:cookie false}))
+;;       (routes))))
 
-(defn main-ring-handler [express-app]
-  ;; Can we even call this a ring handler?
-  (wrap-defaults express-app routes))
+;; (defn main-ring-handler [express-app]
+;;   ;; Can we even call this a ring handler?
+;;   (wrap-defaults express-app routes))
 
-(defn start-selected-web-server! [ring-handler port]
-  (println "Starting express...")
-  (let [express-app       (express)
-        express-ws-server (express-ws express-app)]
+;; (defn start-selected-web-server! [ring-handler port]
+;;   (infof "Starting express...")
+;;   (let [express-app       (express)
+;;         express-ws-server (express-ws express-app)]
 
-    (ring-handler express-app)
+;;     (ring-handler express-app)
 
-    (let [http-server (.listen express-app port)]
-      {:express-app express-app
-       :ws-server   express-ws-server
-       :http-server http-server
-       :stop-fn     #(.close http-server)
-       :port        port})))
+;;     (let [http-server (.listen express-app port)]
+;;       {:express-app express-app
+;;        :ws-server   express-ws-server
+;;        :http-server http-server
+;;        :stop-fn     #(.close http-server)
+;;        :port        port})))
 
 ;; ^^^^  UNCOMMENT TO HERE FOR EXPRESS                                  ^^^^
 ;; *************************************************************************

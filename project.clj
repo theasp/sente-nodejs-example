@@ -19,10 +19,15 @@
    [com.taoensso/timbre       "4.10.0"]
    [com.taoensso/sente        "1.11.0"] ; <--- Sente
 
+   [hiccups                   "0.3.0"] ; Optional, just for HTML
+
    ;;; ---> Choose (uncomment) a supported web server <---
    [org.clojars.whamtet/dogfort "0.2.0-SNAPSHOT"]
 
-   [hiccups                   "0.3.0"] ; Optional, just for HTML
+   ;; Macchiato
+   [bidi               "2.1.1"]
+   [macchiato/core     "0.2.1"]
+   [macchiato/env      "0.0.6"]
 
    ;;; Transit deps optional; may be used to aid perf. of larger data payloads
    ;;; (see reference example for details):
