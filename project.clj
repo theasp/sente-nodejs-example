@@ -38,18 +38,18 @@
    [[source-map-support "*"]
 
     ;; Express
-    [express            "4.13.3"]
-    [express-ws         "1.0.0-rc.2"]
-    [body-parser        "1.14.1"]
-    [cookie-parser      "1.4.0"]
-    [express-session    "1.11.3"]
-    [csurf              "1.8.3"]
+    [express            "*"]
+    [express-ws         "*"]
+    [body-parser        "*"]
+    [cookie-parser      "*"]
+    [express-session    "*"]
+    [csurf              "*"]
 
     ;; ws is needed for dogfort and express
-    [ws                 "0.8.0"]
+    [ws                 "*"]
 
     ;; websocket is needed for the node.js client
-    [websocket          "1.0.23"]]}
+    [websocket          "*"]]}
 
   :plugins
   [[lein-pprint         "1.1.2"]
