@@ -24,10 +24,14 @@
 
    ;; Macchiato
    [bidi.bidi :as bidi]
-   [macchiato.server :as m-http]
+   [macchiato.server :as m-server]
    [macchiato.middleware.defaults :as m-defaults]
    [macchiato.util.response :as m-resp]
    [macchiato.middleware.resource :as m-resource]
+   [macchiato.middleware.anti-forgery :as csrf]
+   [macchiato.auth.backends.session :as m-session]
+   [macchiato.auth.middleware :as m-auth]
+   [taoensso.sente.server-adapters.macchiato :as sente-macchiato]
 
    ;; Optional, for Transit encoding:
    [taoensso.sente.packers.transit :as sente-transit])
@@ -35,6 +39,9 @@
    [dogfort.middleware.routes-macros :refer (defroutes GET POST)]
    [hiccups.core :as hiccups :refer [html]]
    [cljs.core.async.macros :as asyncm :refer (go go-loop)]))
+
+(set! js/console.debug js/console.log)
+#_(timbre/set-level! :trace)
 
 (enable-console-print!)
 ;;(timbre/set-level! :trace) ; Uncomment for more logging
@@ -50,29 +57,37 @@
       (m-resp/content-type "text/html")))
 
 (defn landing-pg-handler [ring-req]
-  (hiccups/html
-   [:h1 "Sente reference example"]
-   [:p "An Ajax/WebSocket" [:strong " (random choice!)"] " has been configured for this example"]
-   [:hr]
-   [:p [:strong "Step 1: "] " try hitting the buttons:"]
-   [:button#btn1 {:type "button"} "chsk-send! (w/o reply)"]
-   [:button#btn2 {:type "button"} "chsk-send! (with reply)"]
-   ;;
-   [:p [:strong "Step 2: "] " observe std-out (for server output) and below (for client output):"]
-   [:textarea#output {:style "width: 100%; height: 200px;"}]
-   ;;
-   [:hr]
-   [:h2 "Step 3: try login with a user-id"]
-   [:p  "The server can use this id to send events to *you* specifically."]
-   [:p
-    [:input#input-login {:type :text :placeholder "User-id"}]
-    [:button#btn-login {:type "button"} "Secure login!"]]
-   ;;
-   [:hr]
-   [:h2 "Step 4: want to re-randomize Ajax/WebSocket connection type?"]
-   [:p "Hit your browser's reload/refresh button"]
-   [:script {:src "main.js"}] ; Include our cljs target
-   ))
+  (debugf "Landing page handler")
+  (-> [:html
+       [:body
+        [:h1 "Sente reference example"]
+        [:p "An Ajax/WebSocket" [:strong " (random choice!)"] " has been configured for this example"]
+        [:hr]
+        [:p [:strong "Step 1: "] " try hitting the buttons:"]
+        [:button#btn1 {:type "button"} "chsk-send! (w/o reply)"]
+        [:button#btn2 {:type "button"} "chsk-send! (with reply)"]
+        ;;
+
+        [:p [:strong "Step 2: "] " observe std-out (for server output) and below (for client output):"]
+        [:textarea#output {:style "width: 100%; height: 200px;"}]
+        ;;
+
+        [:hr]
+        [:h2 "Step 3: try login with a user-id"]
+        [:p  "The server can use this id to send events to *you* specifically."]
+        [:p
+         [:input#input-login {:type :text :placeholder "User-id"}]
+         [:button#btn-login {:type "button"} "Secure login!"]]
+        ;;
+
+        [:hr]
+        [:h2 "Step 4: want to re-randomize Ajax/WebSocket connection type?"]
+        [:p "Hit your browser's reload/refresh button"]
+        [:script {:src "main.js"}]    ; Include our cljs target
+        ]]
+      (hiccups/html)
+      (m-resp/ok)
+      (m-resp/content-type "text/html")))
 
 (defn login-handler
   "Here's where you'll add your server-side login/auth procedure (Friend, etc.).
@@ -87,27 +102,19 @@
 ;; *************************************************************************
 ;; vvvv  UNCOMMENT FROM HERE FOR MACCHIATO                              vvvv
 
+
 (let [;; Serializtion format, must use same val for client + server:
       packer :edn ; Default packer, a good choice in most cases
       ;; (sente-transit/get-flexi-packer :edn) ; Experimental, needs Transit dep
-
       {:keys [ch-recv send-fn ajax-post-fn ajax-get-or-ws-handshake-fn
               connected-uids]}
-      (sente/make-channel-socket-server! dogfort-adapter
-                                         {:packer packer})]
-
-  (def ring-ajax-post                ajax-post-fn)
-  (def ring-ajax-get-or-ws-handshake ajax-get-or-ws-handshake-fn)
-  (def ch-chsk                       ch-recv) ; ChannelSocket's receive channel
-  (def chsk-send!                    send-fn) ; ChannelSocket's send API fn
-  (def connected-uids                connected-uids) ; Watchable, read-only atom
+      (sente-macchiato/make-macchiato-channel-socket-server! {:packer packer})]
+  (def ajax-post                ajax-post-fn)
+  (def ajax-get-or-ws-handshake ajax-get-or-ws-handshake-fn)
+  (def ch-chsk                  ch-recv) ; ChannelSocket's receive channel
+  (def chsk-send!               send-fn) ; ChannelSocket's send API fn
+  (def connected-uids           connected-uids) ; Watchable, read-only atom
   )
-
-(defn wrap-macchiato-sente [handler]
-  (fn [req res raise]
-    (-> req
-        (assoc :response (:node/response req))
-        (handler))))
 
 (defn wrap-macchiato-res [handler]
   (fn [req res raise]
@@ -115,31 +122,36 @@
 
 (defn routes []
   ["/" {""      {:get (wrap-macchiato-res landing-pg-handler)}
-        "chsk"  {:get  (wrap-macchiato-sente ring-ajax-get-or-ws-handshake)
-                 :post (wrap-macchiato-sente ring-ajax-post)
-                 :ws   (wrap-macchiato-sente ring-ajax-get-or-ws-handshake)}
-        "login" {:get (wrap-macchiato-res login-handler)}}])
+        "chsk"  {:get  ajax-get-or-ws-handshake
+                 :post ajax-post
+                 :ws   ajax-get-or-ws-handshake}
+        "login" {:post (wrap-macchiato-res login-handler)}}])
 
 
 
 (defn router [req res raise]
-  (if-let [{:keys [handler route-params]} (bidi/match-route* (routes) (:uri req) req)]
+  (debugf "Request: %s" (select-keys req [:request-method :websocket? :uri :params :session]))
+  (if-let [{:keys [handler route-params]}
+           (bidi/match-route* (routes) (:uri req) req)]
     (handler (assoc req :route-params route-params) res raise)
     (res (not-found req))))
 
 (def main-ring-handler
   (-> router
+      (m-auth/wrap-authentication (m-session/session-backend))
       (m-resource/wrap-resource "resources/public")
       (m-defaults/wrap-defaults m-defaults/site-defaults)))
 
 (defn start-selected-web-server! [ring-handler port]
   (infof "Starting Macchiato...")
-  (let [options {:handler    ring-handler
-                 :port       port
-                 :on-success #(infof "Macchiato started on port %s" port)}
-        stop-fn (m-http/start options)]
+  (let [options {:handler     ring-handler
+                 :port        port
+                 :websockets? true
+                 :on-success  #(infof "Macchiato started on port %s" port)}
+        server  (m-server/start options)]
+    (m-server/start-ws server ring-handler)
     {:port    port
-     :stop-fn stop-fn}))
+     :stop-fn #(.end server)}))
 
 
 ;; ^^^^  UNCOMMENT TO HERE FOR MACCHIATO                                ^^^^

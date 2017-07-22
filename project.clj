@@ -25,9 +25,10 @@
    [org.clojars.whamtet/dogfort "0.2.0-SNAPSHOT"]
 
    ;; Macchiato
-   [bidi               "2.1.1"]
+   [bidi               "2.1.2"]
    [macchiato/core     "0.2.1"]
    [macchiato/env      "0.0.6"]
+   [macchiato/auth     "0.0.1"]
 
    ;;; Transit deps optional; may be used to aid perf. of larger data payloads
    ;;; (see reference example for details):
@@ -57,7 +58,7 @@
    [com.cemerick/austin "0.1.6"]
    [lein-cljsbuild      "1.1.3"]
    [lein-shell          "0.5.0"]
-   [lein-npm            "0.6.2"]
+   [macchiato/lein-npm            "0.6.3"]
    [cider/cider-nrepl   "0.12.0"] ; Optional, for use with Emacs
    ]
 
