@@ -19,10 +19,16 @@
    [com.taoensso/timbre       "4.10.0"]
    [com.taoensso/sente        "1.11.0"] ; <--- Sente
 
+   [hiccups                   "0.3.0"] ; Optional, just for HTML
+
    ;;; ---> Choose (uncomment) a supported web server <---
    [org.clojars.whamtet/dogfort "0.2.0-SNAPSHOT"]
 
-   [hiccups                   "0.3.0"] ; Optional, just for HTML
+   ;; Macchiato
+   [bidi               "2.1.2"]
+   [macchiato/core     "0.2.2"]
+   [macchiato/env      "0.0.6"]
+   [macchiato/auth     "0.0.1"]
 
    ;;; Transit deps optional; may be used to aid perf. of larger data payloads
    ;;; (see reference example for details):
@@ -33,18 +39,18 @@
    [[source-map-support "*"]
 
     ;; Express
-    [express            "4.13.3"]
-    [express-ws         "1.0.0-rc.2"]
-    [body-parser        "1.14.1"]
-    [cookie-parser      "1.4.0"]
-    [express-session    "1.11.3"]
-    [csurf              "1.8.3"]
+    [express            "*"]
+    [express-ws         "*"]
+    [body-parser        "*"]
+    [cookie-parser      "*"]
+    [express-session    "*"]
+    [csurf              "*"]
 
     ;; ws is needed for dogfort and express
-    [ws                 "0.8.0"]
+    [ws                 "*"]
 
     ;; websocket is needed for the node.js client
-    [websocket          "1.0.23"]]}
+    [websocket          "*"]]}
 
   :plugins
   [[lein-pprint         "1.1.2"]
@@ -52,7 +58,7 @@
    [com.cemerick/austin "0.1.6"]
    [lein-cljsbuild      "1.1.3"]
    [lein-shell          "0.5.0"]
-   [lein-npm            "0.6.2"]
+   [macchiato/lein-npm            "0.6.3"]
    [cider/cider-nrepl   "0.12.0"] ; Optional, for use with Emacs
    ]
 
