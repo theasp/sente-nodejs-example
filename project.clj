@@ -26,7 +26,7 @@
 
    ;; Macchiato
    [bidi               "2.1.2"]
-   [macchiato/core     "0.2.1"]
+   [macchiato/core     "0.2.2"]
    [macchiato/env      "0.0.6"]
    [macchiato/auth     "0.0.1"]
 
